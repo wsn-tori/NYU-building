@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <link
+      href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css"
+      rel="stylesheet"
+    />
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/scrollama"></script>
+    <title>NYU Building Map</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        height: fit-content;
+      }
+      #map {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        z-index: -2;
+      }
+      .map {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        background-color: #fff;
+        z-index: -1;
+      }
+      .mapboxgl-popup {
+        max-width: 400px;
+        font: 12px/20px "Helvetica Neue", Arial, Helvetica, sans-serif;
+        z-index: 0;
+      }
+      .legend {
+        background-color: #fff;
+        border-radius: 3px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        font: 12px/20px "Helvetica Neue", Arial, Helvetica, sans-serif;
+        padding: 10px;
+        position: absolute;
+        z-index: 100;
+        bottom: 1.5em;
+        right: 1.5em;
+      }
+
+      .legend h4 {
+        margin: 0 0 10px;
+      }
+
+      .legend div span {
+        border-radius: 50%;
+        display: inline-block;
+        height: 10px;
+        margin-right: 5px;
+        width: 10px;
+      }
+      .test-offset {
+        height: 95vh;
+        position: static;
+      }
+      .box {
+        position: static;
+        float: right;
+        font-size: 2rem;
+        margin: 1.5em;
+        margin-top: 0;
+        width: fit-content;
+        height: 400px;
+      }
+      .text {
+        background-color: rgb(255, 213, 213);
+      }
+      .content-box {
+        position: absolute;
+        height: fit-content;
+        width: 85%;
+        display: flex;
+        flex-direction: column;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="map">
+      <div id="map"></div>
+      <div class="legend">
+        <div>
+          <h4>Tax Lot Value</h4>
+          <div><span style="background-color: #39005e"></span>$35,000,001+</div>
+          <div>
+            <span style="background-color: #8900e1"></span
+            >$10,000,001-$35,000,000
+          </div>
+          <div>
+            <span style="background-color: #e1b9fa"></span>$0-$10,000,000
+          </div>
+        </div>
+      </div>
+    </div>
+    <!---
+    <div class="test-offset"></div>
+    <div class="content-box">
+      <div class="box" data-step="1"><p class="text">MANHATTAN</p></div>
+      <div class="box" data-step="2"><p class="text">BROOKLYN</p></div>
+    </div>-->
+
+    <script type="module">
+      const buildingsByYear = {
+        2023: "nyubuildings.geojson",
+      };
+
+      mapboxgl.accessToken =
+        "pk.eyJ1IjoidG9yaW1vcmFsZXMiLCJhIjoiY2xsd3o0d3E1MHg3dTNkcGp2dnR4NzVoZyJ9.B7EOp5FYhE9VjMzrDsYxVQ";
+      const map = new mapboxgl.Map({
+        style: "mapbox://styles/mapbox/light-v11",
+        center: [-73.993, 40.735],
+        zoom: 14.17,
+        pitch: 50,
+        bearing: 17.7,
+        container: "map",
+        antialias: true,
+      });
+
+      let year = { value: 2023 };
+
+      map.on("load", () => {
+        console.log(buildingsByYear[year.value.toString()]);
+        map.addSource("NYUbuildings", {
+          type: "geojson",
+          data: buildingsByYear[year.value.toString()], //edit at https://www.npoint.io/docs/007a4e9fb2f40d710eb5
+        });
+
+        map.addLayer({
+          id: "NYU Buildings",
+          type: "fill-extrusion",
+          source: "NYUbuildings",
+          paint: {
+            "fill-extrusion-color": [
+              "case",
+              ["boolean", ["feature-state", "hover"], false],
+              "#EF55FA",
+              ["get", "color"],
+            ],
+            "fill-extrusion-height": ["get", "height"],
+            "fill-extrusion-base": 0,
+            "fill-extrusion-opacity": 0.7,
+          },
+        });
+
+        const popup = new mapboxgl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+        });
+
+        let USDollar = new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        });
+        const openTooltip = [false];
+        var langLat = [[]];
+        let hoveredPolygonId = null;
+        map.on("mousemove", "NYU Buildings", (e) => {
+          map.getCanvas().style.cursor = "pointer";
+          langLat[0] = e.lngLat;
+          if (e.features) {
+            const description =
+              e.features[0].properties.name && e.features[0].properties.value
+                ? "<span class='tooltip'><b>" +
+                  e.features[0].properties.name +
+                  "</b><br/>" +
+                  "Tax Lot: " +
+                  e.features[0].properties.BBL +
+                  "<br/>Tax lot Value: " + //tenative value as of May 2023
+                  USDollar.format(e.features[0].properties.value / 0.45) +
+                  "</span>"
+                : "";
+            popup.setLngLat(langLat[0]).setHTML(description).addTo(map);
+
+            if (hoveredPolygonId !== null) {
+              map.setFeatureState(
+                { source: "NYUbuildings", id: hoveredPolygonId },
+                { hover: false }
+              );
+            }
+            hoveredPolygonId = e.features[0].id;
+            map.setFeatureState(
+              { source: "NYUbuildings", id: hoveredPolygonId },
+              { hover: true }
+            );
+          } else {
+            map.setFeatureState(
+              { source: "NYUbuildings", id: hoveredPolygonId },
+              { hover: false }
+            );
+          }
+        });
+        map.on("mouseenter", "NYU Buildings", (e) => {
+          openTooltip[0] = true;
+        });
+        map.on("mouseleave", "NYU Buildings", () => {
+          openTooltip[0] = false;
+          map.getCanvas().style.cursor = "";
+          popup.remove();
+          map.setFeatureState(
+            { source: "NYUbuildings", id: hoveredPolygonId },
+            { hover: false }
+          );
+        });
+      });
+    </script>
+  </body>
+</html>
