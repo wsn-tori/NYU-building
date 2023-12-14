@@ -102,6 +102,24 @@
           </div>
         </div>
       </div>
+      <div
+        style="
+          top: 100%;
+          transform: translateY(-100%);
+          text-align: center;
+          position: relative;
+          width: 100%;
+          height: fit-content;
+          padding: 0.1rem;
+          font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+        "
+      >
+        <span style="background-color: white; padding: 0.15rem"
+          >By: Tori Morales<br />
+          Note: Data as of May 2023 from New York City Primary Land Use Tax Lot
+          Output.</span
+        >
+      </div>
     </div>
     <!---
     <div class="test-offset"></div>
@@ -178,7 +196,7 @@
                   "</b><br/>" +
                   "Tax Lot: " +
                   e.features[0].properties.BBL +
-                  "<br/>Tax lot Value: " + //tenative value as of May 2023
+                  "<br/>Tax Lot Value: " + //tenative value as of May 2023
                   USDollar.format(e.features[0].properties.value / 0.45) +
                   "</span>"
                 : "";
